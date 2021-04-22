@@ -35,7 +35,7 @@ defmodule ExBanking.User do
   def create(name) do
     with nil <- Repo.get_by_name(name),
          :ok <- Repo.put_by_name(name, %__MODULE__{name: name, accounts: default_accounts()}) do
-      Repo.get_by_name(name)
+      {:ok, Repo.get_by_name(name)}
     else
       %__MODULE__{} = _user -> {:error, :user_already_exists}
     end
@@ -51,7 +51,7 @@ defmodule ExBanking.User do
           {:ok, __MODULE__.t()} | {:error, :user_does_not_exist}
   def deposit(name, amount, currency) do
     with %__MODULE__{} = user <- Repo.get_by_name(name),
-         updated_account <- increment_balance(user, currency, amount) do
+         %Account{} = updated_account <- increment_balance(user, currency, amount) do
       accounts = Map.put(user.accounts, currency, updated_account)
       updated_user = Map.put(user, :accounts, accounts)
       Repo.put_by_name(name, updated_user)
@@ -72,7 +72,7 @@ defmodule ExBanking.User do
           {:ok, __MODULE__.t()} | {:error, :user_does_not_exist | :not_enough_money}
   def withdraw(name, amount, currency) do
     with %__MODULE__{} = user <- Repo.get_by_name(name),
-         updated_account <- decrement_balance(user, currency, amount) do
+         %Account{} = updated_account <- decrement_balance(user, currency, amount) do
       accounts = Map.put(user.accounts, currency, updated_account)
       updated_user = Map.put(user, :accounts, accounts)
       Repo.put_by_name(name, updated_user)
