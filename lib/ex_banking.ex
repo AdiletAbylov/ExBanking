@@ -133,7 +133,6 @@ defmodule ExBanking do
           {:ok, from_user_balance :: number, to_user_balance :: number}
           | {:error,
              :wrong_arguments
-             | :user_does_not_exist
              | :not_enough_money
              | :sender_does_not_exist
              | :receiver_does_not_exist

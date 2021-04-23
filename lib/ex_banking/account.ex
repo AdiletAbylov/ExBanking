@@ -25,14 +25,14 @@ defmodule ExBanking.Account do
   """
   @spec new(number(), binary()) :: __MODULE__.t()
   def new(balance, currency) when balance >= 0 and is_binary(currency) and currency != "",
-    do: %__MODULE__{balance: balance, currency: currency}
+    do: %__MODULE__{balance: round_to_2decimals(balance), currency: currency}
 
   @doc """
   Increments account's balance by given amount. Returns updated `Account`.
   """
   @spec increment_balance(__MODULE__.t(), number) :: __MODULE__.t()
   def increment_balance(%__MODULE__{balance: balance} = account, amount),
-    do: %{account | balance: balance + amount}
+    do: %{account | balance: balance + round_to_2decimals(amount)}
 
   @doc """
   Decrements account's balance by given amount.
@@ -45,15 +45,14 @@ defmodule ExBanking.Account do
       do: {:error, :not_enough_money}
 
   def decrement_balance(%__MODULE__{balance: balance} = account, amount),
-    do: %{account | balance: balance - amount}
+    do: %{account | balance: balance - round_to_2decimals(amount)}
 
   @doc """
   Checks if there is enough money on balance for withdraw given amount.
   """
   @spec enough_for_withdraw?(__MODULE__.t(), number) :: boolean()
-  def enough_for_withdraw?(%__MODULE__{balance: balance}, amount) when balance - amount >= 0,
-    do: true
-
   def enough_for_withdraw?(%__MODULE__{balance: balance}, amount),
-    do: false
+    do: balance - round_to_2decimals(amount) >= 0
+
+  defp round_to_2decimals(number), do: number |> Kernel./(1) |> Float.round(2)
 end
