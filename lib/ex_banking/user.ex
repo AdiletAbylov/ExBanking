@@ -15,6 +15,7 @@ defmodule ExBanking.User do
 
   @doc """
   Returns `{:ok, User.t()}` by given name.
+
   Returns `{:error, :user_does_not_exist}` if user with the given name already exists.
   """
   @spec by_name(binary) :: {:error, :user_does_not_exist} | {:ok, __MODULE__.t()}
@@ -28,7 +29,10 @@ defmodule ExBanking.User do
 
   @doc """
   Creates user struct with the given name and stores it.
+  Creates default Account with "usd" currency and zero balance on it.
+
   Returns `{:error, User.t()}` in success case.
+
   Returns `{:error, :user_already_exists}` if user with the given name already exists.
   """
   @spec create(binary()) :: {:ok, __MODULE__.t()} | {:error, :user_already_exists}
@@ -44,7 +48,9 @@ defmodule ExBanking.User do
   @doc """
   Increases user’s balance in given currency by amount value.
   If given currency account doesn't exist, it creates new account for this currency with zero balance.
+
   Returns `{:ok, updated_user}` for success case.
+
   Returns `{:error, :user_does_not_exist}` if user doesn't exist.
   """
   @spec deposit(binary(), number(), binary()) ::
@@ -64,8 +70,11 @@ defmodule ExBanking.User do
   @doc """
   Decreases user’s balance in given currency by amount value.
   If given currency account doesn't exist, it creates new account for this currency with zero balance.
+
   Returns `{:ok, updated_user}` for success case.
+
   Returns `{:error, :user_does_not_exist}` if user doesn't exist.
+
   Returns `{:error, :not_enough_money}` if there is no enough money on account.
   """
   @spec withdraw(binary(), number(), binary()) ::
@@ -84,12 +93,36 @@ defmodule ExBanking.User do
   end
 
   @doc """
-  Extracts balance number for given currency from `User`.
+  Extracts balance number for given currency from given `User`.
+
   Returns zero balance if currency account wasn't create.
   """
   @spec balance_for_currency(__MODULE__.t(), binary()) :: number()
   def balance_for_currency(user, currency),
     do: user |> account_by_currency(currency) |> Map.get(:balance)
+
+  @doc """
+  Checks user for ability to send money.
+
+  Returns `:ok` if all checks passed.
+
+  Returns `:not_enough_money` if there is no enough money to withdraw given amount.
+
+  Returns `:sender_does_not_exist` if sender doesn't exist.
+  """
+  @spec check_sender(binary, any, any) :: :not_enough_money | :ok | :sender_does_not_exist
+  def check_sender(name, amount, currency) do
+    with {:ok, %__MODULE__{} = user} <- by_name(name),
+         true <-
+           user
+           |> account_by_currency(currency)
+           |> Account.enough_for_withdraw?(amount) do
+      :ok
+    else
+      false -> :not_enough_money
+      {:error, :user_does_not_exist} -> :sender_does_not_exist
+    end
+  end
 
   defp decrement_balance(user, currency, amount),
     do: user |> account_by_currency(currency) |> Account.decrement_balance(amount)

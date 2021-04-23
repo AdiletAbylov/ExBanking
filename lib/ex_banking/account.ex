@@ -46,4 +46,14 @@ defmodule ExBanking.Account do
 
   def decrement_balance(%__MODULE__{balance: balance} = account, amount),
     do: %{account | balance: balance - amount}
+
+  @doc """
+  Checks if there is enough money on balance for withdraw given amount.
+  """
+  @spec enough_for_withdraw?(__MODULE__.t(), number) :: boolean()
+  def enough_for_withdraw?(%__MODULE__{balance: balance}, amount) when balance - amount >= 0,
+    do: true
+
+  def enough_for_withdraw?(%__MODULE__{balance: balance}, amount),
+    do: false
 end

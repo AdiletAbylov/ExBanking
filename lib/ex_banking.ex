@@ -15,7 +15,6 @@ defmodule ExBanking do
   Returns `{:error, :wrong_arguments}` for worng arguments.
   """
   @spec create_user(user :: String.t()) :: :ok | {:error, :wrong_arguments | :user_already_exists}
-  def create_user(nil), do: {:error, :wrong_arguments}
   def create_user(""), do: {:error, :wrong_arguments}
   def create_user(user) when not is_binary(user), do: {:error, :wrong_arguments}
 
@@ -42,6 +41,9 @@ defmodule ExBanking do
   @spec deposit(user :: String.t(), amount :: number, currency :: String.t()) ::
           {:ok, new_balance :: number}
           | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
+
+  def deposit("", _, _), do: {:error, :wrong_arguments}
+  def deposit(_, _, ""), do: {:error, :wrong_arguments}
 
   def deposit(user, amount, currency)
       when not is_binary(user) or not is_number(amount) or not is_binary(currency),
@@ -74,6 +76,10 @@ defmodule ExBanking do
              | :user_does_not_exist
              | :not_enough_money
              | :too_many_requests_to_user}
+
+  def withdraw("", _, _), do: {:error, :wrong_arguments}
+  def withdraw(_, _, ""), do: {:error, :wrong_arguments}
+
   def withdraw(user, amount, currency)
       when not is_binary(user) or not is_number(amount) or not is_binary(currency),
       do: {:error, :wrong_arguments}
@@ -99,6 +105,10 @@ defmodule ExBanking do
   @spec get_balance(user :: String.t(), currency :: String.t()) ::
           {:ok, balance :: number}
           | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
+
+  def get_balance("", _), do: {:error, :wrong_arguments}
+  def get_balance(_, ""), do: {:error, :wrong_arguments}
+
   def get_balance(user, currency) when not is_binary(user) or not is_binary(currency),
     do: {:error, :wrong_arguments}
 
@@ -129,10 +139,29 @@ defmodule ExBanking do
              | :receiver_does_not_exist
              | :too_many_requests_to_sender
              | :too_many_requests_to_receiver}
+
+  def send("", _, _, _), do: {:error, :wrong_arguments}
+  def send(_, "", _, _), do: {:error, :wrong_arguments}
+  def send(_, _, _, ""), do: {:error, :wrong_arguments}
+
+  def send(from_user, to_user, amount, currency)
+      when not is_binary(from_user) or not is_binary(to_user) or not is_number(amount) or
+             not is_binary(currency),
+      do: {:error, :wrong_arguments}
+
   def send(from_user, to_user, amount, currency) do
-    with {:ok, from_user_balance} <- withdraw(from_user, amount, currency),
-         {:ok, to_user_balance} <- deposit(to_user, amount, currency) do
-      {:ok, from_user_balance, to_user_balance}
+    with :ok <- User.check_sender(from_user, amount, currency),
+         {:ok, _} <- User.by_name(to_user) do
+      # TO-DO: Should be transaction with atomicity and rollback
+      with {:ok, sender} <- User.withdraw(from_user, amount, currency),
+           {:ok, receiver} <- User.deposit(to_user, amount, currency) do
+        {:ok, User.balance_for_currency(sender, currency),
+         User.balance_for_currency(receiver, currency)}
+      end
+    else
+      :not_enough_money -> {:error, :not_enough_money}
+      :sender_does_not_exist -> {:error, :sender_does_not_exist}
+      {:error, :user_does_not_exist} -> {:error, :receiver_does_not_exist}
     end
   end
 end
