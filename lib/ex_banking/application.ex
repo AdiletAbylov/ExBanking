@@ -4,12 +4,13 @@ defmodule ExBanking.Application do
   @moduledoc false
 
   use Application
-  alias ExBanking.Repo
+  alias ExBanking.{Repo, TasksCounter}
 
   @impl true
   def start(_type, _args) do
     children = [
-      {Repo, %{}}
+      {Repo, %{}},
+      {TasksCounter, %{}}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

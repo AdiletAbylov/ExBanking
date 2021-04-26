@@ -4,6 +4,7 @@ defmodule ExBanking do
 
   """
   alias ExBanking.User
+  alias ExBanking.TaskDispatcher
 
   @doc """
   Creates user with the given name.
@@ -50,11 +51,18 @@ defmodule ExBanking do
       do: {:error, :wrong_arguments}
 
   def deposit(user, amount, currency) do
-    User.deposit(user, amount, currency)
+    TaskDispatcher.perform(user, {User, :deposit, [user, amount, currency]})
     |> case do
-      {:ok, user} -> {:ok, User.balance_for_currency(user, currency)}
-      {:error, :user_does_not_exist} -> {:error, :user_does_not_exist}
+      {:error, :too_many_requests_to_user} -> {:error, :too_many_requests_to_user}
+      {:ok, {:ok, user}} -> {:ok, User.balance_for_currency(user, currency)}
+      {:ok, {:error, :user_does_not_exist}} -> {:error, :user_does_not_exist}
     end
+
+    # User.deposit(user, amount, currency)
+    # |> case do
+    #   {:ok, user} -> {:ok, User.balance_for_currency(user, currency)}
+    #   {:error, :user_does_not_exist} -> {:error, :user_does_not_exist}
+    # end
   end
 
   @doc """
