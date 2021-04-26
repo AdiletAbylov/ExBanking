@@ -53,16 +53,10 @@ defmodule ExBanking do
   def deposit(user, amount, currency) do
     TaskDispatcher.perform(user, {User, :deposit, [user, amount, currency]})
     |> case do
-      {:error, :too_many_requests_to_user} -> {:error, :too_many_requests_to_user}
+      {:error, :too_many_requests_to_user, _} -> {:error, :too_many_requests_to_user}
       {:ok, {:ok, user}} -> {:ok, User.balance_for_currency(user, currency)}
       {:ok, {:error, :user_does_not_exist}} -> {:error, :user_does_not_exist}
     end
-
-    # User.deposit(user, amount, currency)
-    # |> case do
-    #   {:ok, user} -> {:ok, User.balance_for_currency(user, currency)}
-    #   {:error, :user_does_not_exist} -> {:error, :user_does_not_exist}
-    # end
   end
 
   @doc """
@@ -93,11 +87,12 @@ defmodule ExBanking do
       do: {:error, :wrong_arguments}
 
   def withdraw(user, amount, currency) do
-    User.withdraw(user, amount, currency)
+    TaskDispatcher.perform(user, {User, :withdraw, [user, amount, currency]})
     |> case do
-      {:ok, user} -> {:ok, User.balance_for_currency(user, currency)}
-      {:error, :user_does_not_exist} -> {:error, :user_does_not_exist}
-      {:error, :not_enough_money} -> {:error, :not_enough_money}
+      {:error, :too_many_requests_to_user, _} -> {:error, :too_many_requests_to_user}
+      {:ok, {:ok, user}} -> {:ok, User.balance_for_currency(user, currency)}
+      {:ok, {:error, :user_does_not_exist}} -> {:error, :user_does_not_exist}
+      {:ok, {:error, :not_enough_money}} -> {:error, :not_enough_money}
     end
   end
 
@@ -121,10 +116,11 @@ defmodule ExBanking do
     do: {:error, :wrong_arguments}
 
   def get_balance(user, currency) do
-    User.by_name(user)
+    TaskDispatcher.perform(user, {User, :by_name, [user]})
     |> case do
-      {:ok, user} -> {:ok, User.balance_for_currency(user, currency)}
-      {:error, :user_does_not_exist} -> {:error, :user_does_not_exist}
+      {:ok, {:ok, user}} -> {:ok, User.balance_for_currency(user, currency)}
+      {:ok, {:error, :user_does_not_exist}} -> {:error, :user_does_not_exist}
+      {:error, :too_many_requests_to_user, _} -> {:error, :too_many_requests_to_user}
     end
   end
 
@@ -157,18 +153,19 @@ defmodule ExBanking do
       do: {:error, :wrong_arguments}
 
   def send(from_user, to_user, amount, currency) do
+    # TO-DO: Should be transaction with atomicity and rollback
     with :ok <- User.check_sender(from_user, amount, currency),
-         {:ok, _} <- User.by_name(to_user) do
-      # TO-DO: Should be transaction with atomicity and rollback
-      with {:ok, sender} <- User.withdraw(from_user, amount, currency),
-           {:ok, receiver} <- User.deposit(to_user, amount, currency) do
-        {:ok, User.balance_for_currency(sender, currency),
-         User.balance_for_currency(receiver, currency)}
-      end
+         {:ok, _} <- User.by_name(to_user),
+         {:ok, sender_balance} = withdraw(from_user, amount, currency),
+         {:ok, receiver_balance} = deposit(to_user, amount, currency) do
+      {:ok, sender_balance, receiver_balance}
     else
+      {:error, :wrong_arguments} -> {:error, :wrong_arguments}
       :not_enough_money -> {:error, :not_enough_money}
       :sender_does_not_exist -> {:error, :sender_does_not_exist}
       {:error, :user_does_not_exist} -> {:error, :receiver_does_not_exist}
+      {:error, :too_many_requests_to_user, ^from_user} -> {:error, :too_many_requests_to_sender}
+      {:error, :too_many_requests_to_user, ^to_user} -> {:error, :too_many_requests_to_receiver}
     end
   end
 end
