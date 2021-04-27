@@ -134,7 +134,7 @@ defmodule ExBanking.User do
   defp account_by_currency(%{accounts: accounts}, currency) do
     Map.get(accounts, currency)
     |> case do
-      nil -> Account.new(0.0, currency)
+      nil -> Account.new(currency)
       account -> account
     end
   end

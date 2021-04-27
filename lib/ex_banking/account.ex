@@ -2,6 +2,7 @@ defmodule ExBanking.Account do
   @moduledoc """
   Module provides functions to perfom operations above account.
   Module contains type description of `Account` struct.
+  Default currenct is `"usd"` and default balance is `"0.0"`.
   """
   @default_currency "usd"
   @default_balance 0.00
@@ -14,14 +15,20 @@ defmodule ExBanking.Account do
         }
 
   @doc """
-  Returns created Balance with default values: default currency is `usd`. Default balance is `0.00`
+  Returns created `Balance` with default values: default currency is `usd`. Default balance is `0.00`
   """
   @spec new :: __MODULE__.t()
   def new(), do: %__MODULE__{}
 
   @doc """
-  Returns created Balance with given values of currency and balance.
-  Balance cannot be negative value. Currency cannot be nil or empty string.
+  Returns created `Balance` with given currency and default balance.
+  """
+  @spec new(binary) :: ExBanking.Account.t()
+  def new(currency) when is_binary(currency), do: new(0.0, currency)
+
+  @doc """
+  Returns created `Balance` with given values of currency and balance.
+  `Balance` cannot be negative value. Currency cannot be `nil` or empty string.
   """
   @spec new(number(), binary()) :: __MODULE__.t()
   def new(balance, currency) when balance >= 0 and is_binary(currency) and currency != "",

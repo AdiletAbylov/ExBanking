@@ -1,6 +1,9 @@
 defmodule ExBanking.TaskDispatcher do
   @moduledoc """
   This module provides very naive functionality to manage, queue and performs tasks above user.
+  I am not happy with this implementation.
+  It uses GenServer's state to store tasks count for every user in a map.
+  Check ExBankingConcurrencyTest to see simple, stupid tests for it.
   """
   use GenServer
 
@@ -16,7 +19,7 @@ defmodule ExBanking.TaskDispatcher do
 
   @doc """
   Performs given function upon given username.
-  Each user has a limit of performing tasks. By default, this limit is 10.
+  Each user has a limit to a number of performing tasks. By default, this limit number is 10.
   If limit is reached, function returns `{:error, too_many_requests_to_user}` immediately and do not run function.
   Returns `{:ok, function_result}`.
   """
@@ -34,6 +37,9 @@ defmodule ExBanking.TaskDispatcher do
     end
   end
 
+  # Checks if there any room for a new task for a given username.
+  # Returns `true` in reply if new task for user is under limits. Increments tasks counter in this case.
+  # Returns `false` in reply if maximum is reached.
   def handle_call({:could_perform?, username}, _from, state) do
     could_perform = could_perform?(username, state)
 
@@ -47,17 +53,18 @@ defmodule ExBanking.TaskDispatcher do
     {:reply, could_perform, new_state}
   end
 
+  # Decrements tasks counter for a given username.
   def handle_call({:decrement_count, username}, _from, state) do
     {:reply, :ok, update_count(username, state, -1)}
   end
 
+  # Executes given function
   def handle_call({:exec, {module, func, args}}, _from, state) do
     {:reply, Kernel.apply(module, func, args), state}
   end
 
   defp update_count(username, state, amount) do
-    state
-    |> Map.get_and_update(username, fn value ->
+    Map.get_and_update(state, username, fn value ->
       case value do
         nil -> {value, 0}
         value -> {value, value + amount}

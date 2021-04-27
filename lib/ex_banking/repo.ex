@@ -4,14 +4,6 @@ defmodule ExBanking.Repo do
   @moduledoc """
   `Repo` provides functionality to store and update data.
   Data saved in map where name is the key of balances in different amount.
-  %{
-    name: %{
-      currency: balance,
-      currency: balance,
-      ...
-      currency: balance
-    }
-  }
   """
 
   def start_link(initial_value) do
